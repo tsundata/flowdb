@@ -17,7 +17,7 @@ type Entry struct {
 const entryHeaderSize = 24
 
 // EncodeEntry  entry into binary
-func EncodeEntry(e *Entry) ([]byte, int) {
+func EncodeEntry(e *Entry) ([]byte, uint32) {
 	e.KeySize = uint32(len(e.Key))
 	e.ValueSize = uint32(len(e.Value))
 	size := entryHeaderSize + e.KeySize + e.ValueSize
@@ -33,7 +33,7 @@ func EncodeEntry(e *Entry) ([]byte, int) {
 
 	e.CRC = crc32.ChecksumIEEE(buf[4:])
 	binary.BigEndian.PutUint32(buf[:4], e.CRC)
-	return buf, int(size)
+	return buf, size
 }
 
 //DecodeEntry binary into entry
