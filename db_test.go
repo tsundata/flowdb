@@ -7,7 +7,7 @@ import (
 )
 
 func TestFlowDB(t *testing.T) {
-	db := New("./testdata")
+	db := New("/tmp/testdata")
 	err := db.Load()
 	if err != nil {
 		t.Fatal(err)

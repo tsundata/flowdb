@@ -1,7 +1,6 @@
 package flowdb
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -13,8 +12,7 @@ func TestHint(t *testing.T) {
 		ValuePos:  100,
 		Key:       Hash([]byte("test")),
 	}
-	data, size := EncodeHint(&hint)
-	fmt.Println(size)
+	data, _ := EncodeHint(&hint)
 	expect := DecodeHint(data)
 	require.Equal(t, expect, &hint)
 }
