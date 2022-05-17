@@ -154,10 +154,6 @@ func (f *FlowDB) Close() error {
 			return err
 		}
 	}
-	err := f.activeFile.Close()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
