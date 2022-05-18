@@ -18,3 +18,6 @@
 .idea
 .vscode
 testdata/
+flowdb-server
+flowdb-client
+node/
