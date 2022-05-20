@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/hashicorp/raft"
 	"github.com/tsundata/flowdb"
+	"github.com/tsundata/flowdb/network"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,88 +14,92 @@ import (
 )
 
 var (
-	dbDir       string
-	serverAddr  string
-	raftAddr    string
-	raftId      string
-	raftCluster string
-	raftDir     string
+	dbDir        string
+	raftDir      string
+	serverConfig string
 )
 
 func main() {
-	flag.StringVar(&serverAddr, "server_addr", "127.0.0.1:7000", "server listen addr")
-	flag.StringVar(&raftAddr, "raft_addr", "127.0.0.1:5000", "raft listen addr")
-	flag.StringVar(&raftId, "raft_id", "1", "raft id")
-	flag.StringVar(&raftCluster, "raft_cluster",
-		"1/127.0.0.1:5000,2/127.0.0.1:5001,3/127.0.0.1:5002",
-		"raft cluster info")
+	flag.StringVar(&serverConfig, "server_config", "server.json", "server config path")
 	flag.Parse()
 
-	if serverAddr == "" || raftAddr == "" || raftId == "" || raftCluster == "" {
+	if serverConfig == "" {
 		panic("server config error")
 	}
 
-	dbDir = fmt.Sprintf("node/db_%s", raftId)
+	network.Setting.Reload(serverConfig)
+
+	dbDir = fmt.Sprintf("node/db_%s", network.Setting.Raft.Id)
 	err := os.MkdirAll(dbDir, os.FileMode(0700))
 	if err != nil {
 		panic(err)
 	}
 
-	raftDir = fmt.Sprintf("node/raft_%s", raftId)
+	raftDir = fmt.Sprintf("node/raft_%s", network.Setting.Raft.Id)
 	err = os.MkdirAll(raftDir, os.FileMode(0700))
 	if err != nil {
 		panic(err)
 	}
 
-	rf, fsm, err := flowdb.NewRaft(raftAddr, raftId, raftDir)
+	rf, _, err := flowdb.NewRaft(network.Setting.Raft.Addr, network.Setting.Raft.Id, raftDir)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(fsm)
 
 	// bootstrap raft
-	flowdb.Bootstrap(rf, raftAddr, raftId, raftCluster)
+	flowdb.Bootstrap(rf, network.Setting.Raft.Addr, network.Setting.Raft.Id, network.Setting.Raft.Cluster)
 
-	// tcp server
-	listen, err := net.Listen("tcp", serverAddr)
-	if err != nil {
-		panic(err)
-	}
-	go func() {
-		for {
-			conn, err := listen.Accept()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			go func() {
-				data := make([]byte, 200)
-				_, err = conn.Read(data)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-				fmt.Println(string(data))
-				future := rf.Apply([]byte("test"), 5*time.Second)
-				if err := future.Error(); err != nil {
-					_, _ = conn.Write([]byte(err.Error()))
-					return
-				}
-				//fsm.DataBase.Put([]byte("test"), data)
-				//fsm.DataBase.Get([]byte("test"))
-				_, _ = conn.Write([]byte("ok\n"))
-			}()
-		}
-	}()
+	server := network.NewServer()
+
+	server.AddRouter(0, &GetRouter{rf: rf})
+	server.AddRouter(1, &PutRouter{rf: rf})
+
+	server.Serve()
 
 	// close
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 
+	server.Close()
+
 	shutdownFuture := rf.Shutdown()
 	if err := shutdownFuture.Error(); err != nil {
 		log.Println("raft shutdown error", err)
 	}
 	log.Println("kv server shutdown")
+}
+
+type GetRouter struct {
+	rf *raft.Raft
+	network.BaseRouter
+}
+
+func (r *GetRouter) Handle(req network.IRequest) {
+	log.Println("call get router Handle")
+	err := req.GetConnection().SendMessage(1, []byte("ping\n"))
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+type PutRouter struct {
+	rf *raft.Raft
+	network.BaseRouter
+}
+
+func (r *PutRouter) Handle(req network.IRequest) {
+	log.Println("call put router Handle")
+	future := r.rf.Apply([]byte("test"), 5*time.Second)
+	if err := future.Error(); err != nil {
+		err := req.GetConnection().SendMessage(1, []byte(err.Error()+"\n"))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	err := req.GetConnection().SendMessage(1, []byte("ping\n"))
+	if err != nil {
+		log.Println(err)
+	}
 }

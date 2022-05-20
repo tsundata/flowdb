@@ -19,8 +19,8 @@ func NewFSM() *FSM {
 }
 
 func (f *FSM) Apply(log *raft.Log) interface{} {
-	fmt.Println("apply data", log.Data)
-	f.DataBase.Put([]byte("test"), log.Data)
+	fmt.Println("apply data", string(log.Data))
+	f.DataBase.Put([]byte("test"), log.Data) //todo
 	return nil
 }
 

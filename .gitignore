@@ -21,3 +21,4 @@ testdata/
 flowdb-server
 flowdb-client
 node/
+/*.json
