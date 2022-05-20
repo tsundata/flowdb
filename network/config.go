@@ -39,11 +39,12 @@ func (c *Config) Reload(path string) {
 }
 
 func init() {
+	// default config
 	Setting = &Config{
 		Name:              "server",
 		Host:              "0.0.0.0",
 		TCPPort:           5678,
-		Version:           "v0.1",
+		Version:           "0.1",
 		MaxPacketSize:     4096,
 		MaxConn:           1000,
 		WorkerPoolSize:    10,

@@ -5,6 +5,9 @@
   "version": "0.1",
   "max_packet_size": 4096,
   "max_conn": 1000,
+  "worker_pool_size": 10,
+  "max_worker_task_len": 1024,
+  "max_message_chan_len": 1024,
   "raft": {
     "id": "1",
     "addr": "127.0.0.1:5000",
