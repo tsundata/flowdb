@@ -3,7 +3,7 @@ module github.com/tsundata/flowdb
 go 1.17
 
 require (
-	github.com/hashicorp/raft v1.3.9
+	github.com/hashicorp/raft v1.3.10
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
 	github.com/stretchr/testify v1.7.5
 )
